@@ -1,0 +1,68 @@
+enum Role {
+    ADMIN
+    USER
+}
+
+enum UserStatus {
+    PENDING
+    ACTIVE
+}
+model User {
+    id String @id @default(uuid()) @db.Uuid
+
+    name String
+    lastName String
+    email String @unique
+    password String
+    status UserStatus
+
+    role Role
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    passwordReser PasswordReset?
+    refreshToken RefreshToken?
+    emailVerfication EmailVerification?
+
+    
+}
+
+model RefreshToken {
+    id String @id @default(uuid()) @db.Uuid
+    token String @unique
+
+    userId String @db.Uuid @unique
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    expiresAt DateTime
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model PasswordReset {
+    id String @id @default(uuid()) @db.Uuid
+
+    userId String @db.Uuid @unique
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    token String @unique
+    expiresAt DateTime
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model EmailVerification {
+    id String @id @default(uuid()) @db.Uuid
+
+    userId String @db.Uuid @unique
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    token String @unique
+    expiresAt DateTime
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
