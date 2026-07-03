@@ -1,0 +1,15 @@
+enum RoomStatus {
+  ACTIVE
+  MAINTENANCE
+}
+
+model Room {
+  id          String     @id @default(uuid()) @db.Uuid
+  name        String
+  capacity    Int
+  description String
+  status      RoomStatus @default(ACTIVE)
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
