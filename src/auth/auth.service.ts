@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import argon2 from 'argon2'
 import { nanoid } from "nanoid";
 import { NotificationService } from 'src/common/mail/notification.service';
+import { NotFoundError } from 'rxjs';
 
 @Injectable()
 export class AuthService {
@@ -27,7 +28,7 @@ export class AuthService {
 
         const registrationToken = nanoid(32)
 
-        return this.prisma.$transaction(async (tx) => {
+        return await this.prisma.$transaction(async (tx) => {
             const newUser = await tx.user.create({
                 data: {
                     name: dto.name,
@@ -36,10 +37,47 @@ export class AuthService {
                     password: hashedPassword
                 }
             })
-            
+
+            await tx.emailVerification.create({
+                data: {
+                    userId: newUser.id,
+                    token: registrationToken,
+                    expiresAt: new Date(Date.now() + 30 * 60 * 1000)
+                }
+            })
+
             this.mailer.sendRegistrationEmail(registrationToken, dto.email, dto.name)
 
             return newUser;
+        })
+    }
+
+    async verifyAccount(token: string) {
+        const userEmailRegistration = await this.prisma.emailVerification.findUnique({
+            where: {
+                token: token
+            }
+        })
+
+        if (!userEmailRegistration || userEmailRegistration.expiresAt < new Date()) return { message: 'Inválido ou Token expirado' };
+
+
+
+        return await this.prisma.$transaction(async (tx) => {
+            await tx.user.update({
+                where: {
+                    id: userEmailRegistration.userId
+                },
+                data: {
+                    status: 'ACTIVE'
+                }
+            })
+            
+            await tx.emailVerification.delete({
+                where: {
+                    token: token
+                }
+            })
         })
     }
 }

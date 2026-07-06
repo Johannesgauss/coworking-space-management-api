@@ -8,7 +8,7 @@ export class NotificationService {
     ){}
 
     async sendRegistrationEmail(token: string, email: string, name: string){
-        const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`
+        const resetLink = `${process.env.FRONTEND_URL}/verify-email?token=${token}`
 
         await this.mailer.sendMail({
             to: email,
