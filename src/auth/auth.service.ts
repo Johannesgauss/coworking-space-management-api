@@ -1,10 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
 import argon2 from 'argon2'
 import { nanoid } from "nanoid";
 import { NotificationService } from 'src/common/mail/notification.service';
-import { NotFoundError } from 'rxjs';
 
 @Injectable()
 export class AuthService {
@@ -48,7 +47,7 @@ export class AuthService {
 
             this.mailer.sendRegistrationEmail(registrationToken, dto.email, dto.name)
 
-            return newUser;
+            return {message: "Conta registrada com Sucesso. Verifique seu email."};
         })
     }
 
@@ -78,6 +77,8 @@ export class AuthService {
                     token: token
                 }
             })
+
+            return {message: "Conta confirmada com sucesso! Siga para o Login1"}
         })
     }
 }
