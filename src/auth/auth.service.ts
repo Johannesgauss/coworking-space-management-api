@@ -78,7 +78,7 @@ export class AuthService {
                 }
             })
 
-            return {message: "Conta confirmada com sucesso! Siga para o Login1"}
+            return {message: "Conta confirmada com sucesso! Siga para o Login"}
         })
     }
 }
