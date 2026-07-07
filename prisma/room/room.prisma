@@ -12,4 +12,5 @@ model Room {
 
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  reservations Reservation[]
 }

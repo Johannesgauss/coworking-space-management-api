@@ -7,33 +7,34 @@ enum UserStatus {
     PENDING
     ACTIVE
 }
+
 model User {
     id String @id @default(uuid()) @db.Uuid
 
-    name String
+    name     String
     lastName String
-    email String @unique
+    email    String     @unique
     password String
-    status UserStatus
+    status   UserStatus
 
     role Role
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
 
-    passwordReser PasswordReset?
-    refreshToken RefreshToken?
+    passwordReser    PasswordReset?
+    refreshToken     RefreshToken?
     emailVerfication EmailVerification?
 
-    
+    reservations Reservation[]
 }
 
 model RefreshToken {
-    id String @id @default(uuid()) @db.Uuid
+    id    String @id @default(uuid()) @db.Uuid
     token String @unique
 
-    userId String @db.Uuid @unique
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId String @unique @db.Uuid
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     expiresAt DateTime
 
@@ -44,10 +45,10 @@ model RefreshToken {
 model PasswordReset {
     id String @id @default(uuid()) @db.Uuid
 
-    userId String @db.Uuid @unique
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId String @unique @db.Uuid
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    token String @unique
+    token     String   @unique
     expiresAt DateTime
 
     createdAt DateTime @default(now())
@@ -57,10 +58,10 @@ model PasswordReset {
 model EmailVerification {
     id String @id @default(uuid()) @db.Uuid
 
-    userId String @db.Uuid @unique
-    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    userId String @unique @db.Uuid
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    token String @unique
+    token     String   @unique
     expiresAt DateTime
 
     createdAt DateTime @default(now())
