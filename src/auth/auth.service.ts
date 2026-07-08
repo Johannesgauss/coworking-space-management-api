@@ -5,6 +5,7 @@ import argon2 from 'argon2'
 import { nanoid } from "nanoid";
 import { NotificationService } from 'src/common/mail/notification.service';
 import { JwtService } from '@nestjs/jwt';
+import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
@@ -49,7 +50,7 @@ export class AuthService {
 
             this.mailer.sendRegistrationEmail(registrationToken, dto.email, dto.name)
 
-            return {message: "Conta registrada com Sucesso. Verifique seu email."};
+            return { message: "Conta registrada com Sucesso. Verifique seu email." };
         })
     }
 
@@ -72,14 +73,14 @@ export class AuthService {
                     status: 'ACTIVE'
                 }
             })
-            
+
             await tx.emailVerification.delete({
                 where: {
                     token: token
                 }
             })
 
-            return {message: "Conta confirmada com sucesso! Siga para o Login"}
+            return { message: "Conta confirmada com sucesso! Siga para o Login" }
         })
     }
 
@@ -90,13 +91,13 @@ export class AuthService {
             this.jwtService.signAsync({
                 iss: process.env.JWT_ISSUER,
                 sub: userId
-            }, {expiresIn: '15m'}),
+            }, { expiresIn: '15m' }),
             this.jwtService.signAsync(
                 {
                     iss: process.env.JWT_ISSUER,
                     jti: refreshTokenId,
                     sub: userId
-                }, {expiresIn: '7d'}
+                }, { expiresIn: '7d' }
             )
         ])
 
@@ -111,26 +112,77 @@ export class AuthService {
             }
         })
 
-        return {accessToken, refreshToken}
+        return { accessToken, refreshToken }
     }
 
-    async login(email: string, password: string) {
+    async login(dto: LoginDto) {
         const user = await this.prisma.user.findUnique({
-            where: {email: email}
+            where: { email: dto.email }
         })
 
-        if (!user) return {message: 'Credenciais inválidas'};
+        if (!user) return { message: 'Credenciais inválidas' };
 
         const validatePassword = await argon2.verify(
             user.password,
-            password
+            dto.password
         )
 
-        if (!validatePassword) return {message: "Credenciais inválidas"};
+        if (!validatePassword) return { message: "Credenciais inválidas" };
 
-        const {accessToken, refreshToken} = await this.generateTokens(user.id)
+        const { accessToken, refreshToken } = await this.generateTokens(user.id)
 
-        return {accessToken: accessToken, refreshToken: refreshToken}
+        return { accessToken: accessToken, refreshToken: refreshToken }
+    }
+
+    async refreshToken(refreshToken: string) {
+        try {
+            const tokenPayload = await this.jwtService.verifyAsync<{
+                sub: string;
+                jti: string;
+            }>(refreshToken, {
+                ignoreExpiration: false,
+                secret: process.env.JWT_SECRET
+            });
+
+            const storedToken = await this.prisma.refreshToken.findUnique({
+                where: { userId: tokenPayload.sub, id: tokenPayload.jti },
+            });
+
+            if (!storedToken) return { message: 'Token de autenticação inválido' }
+
+            const isTokenValid = await argon2.verify(storedToken.token, refreshToken);
+
+            if (!isTokenValid) return { message: 'Token de autenticação inválido' }
+
+            const user = await this.prisma.user.findUnique({
+                where: {
+                    id: tokenPayload.sub
+                }
+            })
+
+            if (!user) return { message: "Usuário não encontrado" }
+
+            return await this.prisma.$transaction(async (tx) => {
+                const { accessToken, refreshToken: newRefreshToken } = await this.generateTokens(user.id);
+
+                await tx.refreshToken.delete({
+                    where: {userId: tokenPayload.sub, id: tokenPayload.jti},
+                })
+
+                return {
+                    access_token: accessToken,
+                    refresh_token: newRefreshToken
+                }
+            })
+        } catch {
+            return {message: "Token de autenticação inválido"}
+        }
+    }
+
+    async logout(userId: string) {
+        await this.prisma.refreshToken.deleteMany({
+            where: {userId: userId}
+        })
     }
 }
 
