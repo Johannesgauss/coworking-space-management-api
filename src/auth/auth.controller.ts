@@ -50,5 +50,10 @@ export class AuthController {
         return this.authService.changeForgottenPassword(token, password)
     }
 
+    @Post('change-password')
+    @HttpCode(HttpStatus.OK)
+    changePassword(@User('id') userId: string, password: string) {
+        return this.authService.changePassword(userId, password)
+    }
 
 }

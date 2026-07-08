@@ -3,6 +3,7 @@ import {
     ConflictException,
     HttpException,
     Injectable,
+    NotFoundException,
     UnauthorizedException,
 } from '@nestjs/common';
 import { CreateAccountDto } from './dto/create-account.dto';
@@ -260,6 +261,23 @@ export class AuthService {
 
     }
 
+
+    async changePassword(userId: string, newPassword: string) {
+        const user = await this.prisma.user.findUnique({
+            where: {id: userId}
+        })
+
+        if(!user) throw new NotFoundException('Usuário não encontrado');
+
+        const password = await argon2.hash(newPassword)
+
+        await this.prisma.user.update({
+            where: {id: user.id},
+            data: {password: password }
+        })
+
+        return {message: "Senha alterada com sucesso"}
+    }
 
 
 
