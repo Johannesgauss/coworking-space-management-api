@@ -52,7 +52,7 @@ export class AuthController {
 
     @Post('change-password')
     @HttpCode(HttpStatus.OK)
-    changePassword(@User('id') userId: string, password: string) {
+    changePassword(@User('id') userId: string, @Body('password') password: string) {
         return this.authService.changePassword(userId, password)
     }
 
