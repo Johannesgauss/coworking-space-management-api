@@ -1,0 +1,14 @@
+import { Controller, Get, HttpCode, HttpStatus } from '@nestjs/common';
+import { UserService } from './user.service';
+import { User } from 'src/common/decorators/user.decorator';
+
+@Controller('user')
+export class UserController {
+    constructor(private readonly userService: UserService) { }
+
+    @Get('me')
+    @HttpCode(HttpStatus.OK)
+    getMe(@User('id') userId: string) {
+        return this.userService.getMe(userId);
+    }
+}

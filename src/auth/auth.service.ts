@@ -13,7 +13,7 @@ import { nanoid } from 'nanoid';
 import { NotificationService } from 'src/common/mail/notification.service';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash } from 'node:crypto';
 
 @Injectable()
 export class AuthService {
@@ -102,7 +102,7 @@ export class AuthService {
   }
 
   async generateTokens(userId: string) {
-    const refreshTokenId = randomUUID();
+    const refreshTokenId = nanoid();
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(
@@ -127,7 +127,7 @@ export class AuthService {
     await this.prisma.refreshToken.create({
       data: {
         userId: userId,
-        id: refreshTokenId,
+        jti: refreshTokenId,
         token: hashedRefreshToken,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
@@ -164,7 +164,7 @@ export class AuthService {
       });
 
       const storedToken = await this.prisma.refreshToken.findUnique({
-        where: { userId: tokenPayload.sub, id: tokenPayload.jti },
+        where: { userId: tokenPayload.sub, jti: tokenPayload.jti },
       });
 
       if (!storedToken)
@@ -188,7 +188,7 @@ export class AuthService {
           await this.generateTokens(user.id);
 
         await tx.refreshToken.delete({
-          where: { userId: tokenPayload.sub, id: tokenPayload.jti },
+          where: { userId: tokenPayload.sub, jti: tokenPayload.jti },
         });
 
         return {
@@ -285,11 +285,11 @@ export class AuthService {
 
     if (!user) throw new NotFoundException('Usuário não encontrado');
 
-    const password = await argon2.hash(newPassword);
+    const hashedPassword = await argon2.hash(newPassword);
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { password: password },
+      data: { password: hashedPassword },
     });
 
     return { message: 'Senha alterada com sucesso' };
