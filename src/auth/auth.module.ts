@@ -8,10 +8,10 @@ import {JwtModule } from '@nestjs/jwt'
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
-  imports: [PrismaModule,NotificationService, JwtModule.register({
+  imports: [PrismaModule, JwtModule.register({
       secret: process.env.JWT_SECRET,
       signOptions: {expiresIn: '15m'}
     })],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy,NotificationService],
   controllers: [AuthController]})
 export class AuthModule {}

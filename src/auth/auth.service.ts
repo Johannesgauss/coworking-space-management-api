@@ -120,7 +120,7 @@ export class AuthService {
         await this.prisma.refreshToken.create({
             data: {
                 userId: userId,
-                id: refreshTokenId,
+                jti: refreshTokenId,
                 token: hashedRefreshToken,
                 expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
             }
@@ -159,7 +159,7 @@ export class AuthService {
             });
 
             const storedToken = await this.prisma.refreshToken.findUnique({
-                where: { userId: tokenPayload.sub, id: tokenPayload.jti },
+                where: { userId: tokenPayload.sub, jti: tokenPayload.jti },
             });
 
             if (!storedToken) throw new UnauthorizedException('Token de autenticação inválido')
@@ -180,7 +180,7 @@ export class AuthService {
                 const { accessToken, refreshToken: newRefreshToken } = await this.generateTokens(user.id);
 
                 await tx.refreshToken.delete({
-                    where: { userId: tokenPayload.sub, id: tokenPayload.jti },
+                    where: { userId: tokenPayload.sub, jti: tokenPayload.jti },
                 })
 
                 return {
