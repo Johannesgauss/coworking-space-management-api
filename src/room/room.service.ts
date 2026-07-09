@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
 import type { CreateRoomDto } from './dto/create-room.dto';
+import { RoomStatus } from 'generated/prisma/client';
 
 @Injectable()
 export class RoomService {
@@ -26,6 +27,23 @@ export class RoomService {
     return await this.prisma.room.update({
       where: { id },
       data: updateRoomDto,
+    });
+  }
+
+  async changeStatus(id: string, isActive: boolean) {
+    const room = await this.prisma.room.findUnique({
+      where: { id },
+    });
+
+    if (!room) {
+      throw new NotFoundException('Sala não encontrada');
+    }
+
+    const newStatus = isActive ? RoomStatus.ACTIVE : RoomStatus.MAINTENANCE;
+
+    return this.prisma.room.update({
+      where: { id },
+      data: { status: newStatus },
     });
   }
 
