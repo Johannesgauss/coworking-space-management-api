@@ -31,9 +31,7 @@ export class AuthService {
 
     async registerAccount(dto: CreateAccountDto) {
         const isUserRegistered = await this.prisma.user.findUnique({
-            where: {
-                email: dto.email
-            }
+            where: { email: dto.email }
         })
 
         if (isUserRegistered) {
@@ -44,8 +42,10 @@ export class AuthService {
 
         const registrationToken = nanoid(32)
 
-        return await this.prisma.$transaction(async (tx) => {
-            const newUser = await tx.user.create({
+        const hashedRegistrationToken = this.hashToken(registrationToken)
+
+        await this.prisma.$transaction(async (tx) => {
+            const user = await tx.user.create({
                 data: {
                     name: dto.name,
                     lastName: dto.lastName,
@@ -56,22 +56,24 @@ export class AuthService {
 
             await tx.emailVerification.create({
                 data: {
-                    userId: newUser.id,
-                    token: registrationToken,
+                    userId: user.id,
+                    token: hashedRegistrationToken,
                     expiresAt: new Date(Date.now() + 30 * 60 * 1000)
                 }
             })
-
-            this.mailer.sendRegistrationEmail(registrationToken, dto.email, dto.name)
-
-            return { message: "Conta registrada com Sucesso. Verifique seu email." };
         })
+
+        await this.mailer.sendRegistrationEmail(registrationToken, dto.email, dto.name)
+
+        return { message: "Conta registrada com sucesso. Verifique seu email." }
     }
 
     async verifyAccount(token: string) {
+        const hashedToken = this.hashToken(token)
+
         const userEmailRegistration = await this.prisma.emailVerification.findUnique({
             where: {
-                token: token
+                token: hashedToken
             }
         })
 
@@ -90,7 +92,7 @@ export class AuthService {
 
             await tx.emailVerification.delete({
                 where: {
-                    token: token
+                    token: hashedToken
                 }
             })
 
@@ -98,13 +100,14 @@ export class AuthService {
         })
     }
 
-    async generateTokens(userId: string) {
+    async generateTokens(userId: string, userRole: string) {
         const refreshTokenId = nanoid();
 
         const [accessToken, refreshToken] = await Promise.all([
             this.jwtService.signAsync({
                 iss: process.env.JWT_ISSUER,
-                sub: userId
+                sub: userId,
+                role: userRole
             }, { expiresIn: '15m' }),
             this.jwtService.signAsync(
                 {
@@ -117,9 +120,15 @@ export class AuthService {
 
         const hashedRefreshToken = await argon2.hash(refreshToken);
 
-        await this.prisma.refreshToken.create({
-            data: {
+        await this.prisma.refreshToken.upsert({
+            where: { userId: userId },
+            create: {
                 userId: userId,
+                jti: refreshTokenId,
+                token: hashedRefreshToken,
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            },
+            update: {
                 jti: refreshTokenId,
                 token: hashedRefreshToken,
                 expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -143,7 +152,7 @@ export class AuthService {
 
         if (!validatePassword) throw new UnauthorizedException("Credenciais inválidas");
 
-        const { accessToken, refreshToken } = await this.generateTokens(user.id)
+        const { accessToken, refreshToken } = await this.generateTokens(user.id, user.role)
 
         return { accessToken: accessToken, refreshToken: refreshToken }
     }
@@ -159,7 +168,7 @@ export class AuthService {
             });
 
             const storedToken = await this.prisma.refreshToken.findUnique({
-                where: { userId: tokenPayload.sub, jti: tokenPayload.jti },
+                where: { jti: tokenPayload.jti },
             });
 
             if (!storedToken) throw new UnauthorizedException('Token de autenticação inválido')
@@ -176,18 +185,12 @@ export class AuthService {
 
             if (!user) throw new UnauthorizedException("Usuário não encontrado")
 
-            return await this.prisma.$transaction(async (tx) => {
-                const { accessToken, refreshToken: newRefreshToken } = await this.generateTokens(user.id);
+            const { accessToken, refreshToken: newRefreshToken } = await this.generateTokens(user.id, user.role);
 
-                await tx.refreshToken.delete({
-                    where: { userId: tokenPayload.sub, jti: tokenPayload.jti },
-                })
-
-                return {
-                    access_token: accessToken,
-                    refresh_token: newRefreshToken
-                }
-            })
+            return {
+                access_token: accessToken,
+                refresh_token: newRefreshToken
+            }
         } catch (error) {
             if (error instanceof HttpException) throw error;
             throw new UnauthorizedException("Token de autenticação inválido")
@@ -264,19 +267,19 @@ export class AuthService {
 
     async changePassword(userId: string, newPassword: string) {
         const user = await this.prisma.user.findUnique({
-            where: {id: userId}
+            where: { id: userId }
         })
 
-        if(!user) throw new NotFoundException('Usuário não encontrado');
+        if (!user) throw new NotFoundException('Usuário não encontrado');
 
         const password = await argon2.hash(newPassword)
 
         await this.prisma.user.update({
-            where: {id: user.id},
-            data: {password: password }
+            where: { id: user.id },
+            data: { password: password }
         })
 
-        return {message: "Senha alterada com sucesso"}
+        return { message: "Senha alterada com sucesso" }
     }
 
 
