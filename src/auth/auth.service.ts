@@ -305,10 +305,11 @@ export class AuthService {
 
 		if (!validatePassword) throw new UnauthorizedException('Credenciais inválidas');
 
-		await this.prisma.user.delete({
-			where: {id: user.id}
-		})
+		await this.prisma.user.update({
+			where: { id: user.id },
+			data: { status: 'DELETED', email: `deleted_${user.id}@...` }
+		});
 
-		return {message: "Conta deletada com sucesso"}
+		return { message: "Conta deletada com sucesso" }
 	}
 }

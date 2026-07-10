@@ -6,6 +6,7 @@ enum Role {
 enum UserStatus {
     PENDING
     ACTIVE
+    DELETED
 }
 
 model User {
