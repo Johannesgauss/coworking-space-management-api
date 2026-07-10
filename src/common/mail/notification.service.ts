@@ -27,13 +27,13 @@ export class NotificationService {
     }
 
     async sendResetPasswordEmail(token: string, email: string, name: string){
-        const resetLink = `${process.env.FRONTEND_URL}/auth/forgot-password-reset?token=${token}`
+        const resetLink = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`
 
         await this.mailer.sendMail({
             to: email,
             subject: 'Confirme seu registro',
             html: `
-            <h1>Olá, ${name}<h1>
+            <p>Olá, ${name}<p>
             <p>Para recuperar a senha da sua conta, por favor, clique no link abaixo:<p>
 
             <a href="${resetLink}">Mude altere sua senha<a>

@@ -1,10 +1,10 @@
 import {
-  BadRequestException,
-  ConflictException,
-  HttpException,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
+	BadRequestException,
+	ConflictException,
+	HttpException,
+	Injectable,
+	NotFoundException,
+	UnauthorizedException,
 } from '@nestjs/common';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { PrismaService } from 'src/common/prisma/prisma.service';
@@ -17,284 +17,298 @@ import { createHash } from 'node:crypto';
 
 @Injectable()
 export class AuthService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly mailer: NotificationService,
-    private readonly jwtService: JwtService,
-  ) {}
+	constructor(
+		private readonly prisma: PrismaService,
+		private readonly mailer: NotificationService,
+		private readonly jwtService: JwtService,
+	) { }
 
-  private hashToken(token: string): string {
-    return createHash('sha256').update(token).digest('hex');
-  }
+	private hashToken(token: string): string {
+		return createHash('sha256').update(token).digest('hex');
+	}
 
-  async registerAccount(dto: CreateAccountDto) {
-    const isUserRegistered = await this.prisma.user.findUnique({
-      where: {
-        email: dto.email,
-      },
-    });
+	async registerAccount(dto: CreateAccountDto) {
+		const isUserRegistered = await this.prisma.user.findUnique({
+			where: {
+				email: dto.email,
+			},
+		});
 
-    if (isUserRegistered) {
-      throw new ConflictException('Esse email já existe');
-    }
+		if (isUserRegistered) throw new ConflictException('Esse email já existe');
 
-    const hashedPassword = await argon2.hash(dto.password);
+		const hashedPassword = await argon2.hash(dto.password);
 
-    const registrationToken = nanoid(32);
-    const hashedRegistrationToken = this.hashToken(registrationToken);
+		const registrationToken = nanoid(32);
+		const hashedRegistrationToken = this.hashToken(registrationToken);
 
-    return await this.prisma.$transaction(async (tx) => {
-      const newUser = await tx.user.create({
-        data: {
-          name: dto.name,
-          lastName: dto.lastName,
-          email: dto.email,
-          password: hashedPassword,
-        },
-      });
+		return await this.prisma.$transaction(async (tx) => {
+			const newUser = await tx.user.create({
+				data: {
+					name: dto.name,
+					lastName: dto.lastName,
+					email: dto.email,
+					password: hashedPassword,
+				},
+			});
 
-      await tx.emailVerification.create({
-        data: {
-          userId: newUser.id,
-          token: hashedRegistrationToken,
-          expiresAt: new Date(Date.now() + 30 * 60 * 1000),
-        },
-      });
+			await tx.emailVerification.create({
+				data: {
+					userId: newUser.id,
+					token: hashedRegistrationToken,
+					expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+				},
+			});
 
-      await this.mailer.sendRegistrationEmail(
-        registrationToken,
-        dto.email,
-        dto.name,
-      );
+			await this.mailer.sendRegistrationEmail(
+				registrationToken,
+				dto.email,
+				dto.name,
+			);
 
-      return { message: 'Conta registrada com Sucesso. Verifique seu email.' };
-    });
-  }
+			return { message: 'Conta registrada com Sucesso. Verifique seu email.' };
+		});
+	}
 
-  async verifyAccount(token: string) {
-    const hashedToken = this.hashToken(token);
-    const userEmailRegistration =
-      await this.prisma.emailVerification.findUnique({
-        where: {
-          token: hashedToken,
-        },
-      });
+	async verifyAccount(token: string) {
+		const hashedToken = this.hashToken(token);
+		const userEmailRegistration =
+			await this.prisma.emailVerification.findUnique({
+				where: {
+					token: hashedToken,
+				},
+			});
 
-    if (!userEmailRegistration || userEmailRegistration.expiresAt < new Date())
-      throw new BadRequestException('Inválido ou Token expirado');
+		if (!userEmailRegistration) throw new BadRequestException('Token Inválido');
 
-    return await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: {
-          id: userEmailRegistration.userId,
-        },
-        data: {
-          status: 'ACTIVE',
-        },
-      });
+		if (userEmailRegistration.expiresAt < new Date()) {
+			await this.prisma.emailVerification.delete({
+				where: { id: userEmailRegistration.id }
+			})
+			throw new BadRequestException('Token expirado, registre-se novamente')
+		}
 
-      await tx.emailVerification.delete({
-        where: {
-          token: hashedToken,
-        },
-      });
+		return await this.prisma.$transaction(async (tx) => {
+			await tx.user.update({
+				where: {
+					id: userEmailRegistration.userId,
+				},
+				data: {
+					status: 'ACTIVE',
+				},
+			});
 
-      return { message: 'Conta confirmada com sucesso! Siga para o Login' };
-    });
-  }
+			await tx.emailVerification.delete({
+				where: {
+					token: hashedToken,
+				},
+			});
 
-  async generateTokens(userId: string, userRole: string) {
-    const refreshTokenId = nanoid();
+			return { message: 'Conta confirmada com sucesso! Siga para o Login' };
+		});
+	}
 
-    const [accessToken, refreshToken] = await Promise.all([
-      this.jwtService.signAsync(
-        {
-          iss: process.env.JWT_ISSUER,
-          sub: userId,
-          role: userRole,
-        },
-        { expiresIn: '15m' },
-      ),
-      this.jwtService.signAsync(
-        {
-          iss: process.env.JWT_ISSUER,
-          jti: refreshTokenId,
-          sub: userId,
-        },
-        { expiresIn: '7d' },
-      ),
-    ]);
+	async generateTokens(userId: string, userRole: string) {
+		const refreshTokenId = nanoid();
 
-    const hashedRefreshToken = await argon2.hash(refreshToken);
+		const [accessToken, refreshToken] = await Promise.all([
+			this.jwtService.signAsync(
+				{
+					iss: process.env.JWT_ISSUER,
+					sub: userId,
+					role: userRole,
+				},
+				{ expiresIn: '15m' },
+			),
+			this.jwtService.signAsync(
+				{
+					iss: process.env.JWT_ISSUER,
+					jti: refreshTokenId,
+					sub: userId,
+				},
+				{ expiresIn: '7d' },
+			),
+		]);
 
-    await this.prisma.refreshToken.upsert({
-      where: { userId: userId },
-      create: {
-        userId: userId,
-        jti: refreshTokenId,
-        token: hashedRefreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-      update: {
-        jti: refreshTokenId,
-        token: hashedRefreshToken,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    });
+		const hashedRefreshToken = await argon2.hash(refreshToken);
 
-    return { accessToken, refreshToken };
-  }
+		await this.prisma.refreshToken.create({
+			data: {
+				userId,
+				jti: refreshTokenId,
+				token: hashedRefreshToken,
+				expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+			},
+		});
 
-  async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
+		return { accessToken, refreshToken };
+	}
 
-    if (!user) throw new UnauthorizedException('Credenciais inválidas');
+	async login(dto: LoginDto) {
+		const user = await this.prisma.user.findUnique({
+			where: { email: dto.email },
+		});
 
-    const validatePassword = await argon2.verify(user.password, dto.password);
+		if (!user) throw new UnauthorizedException('Credenciais inválidas');
 
-    if (!validatePassword)
-      throw new UnauthorizedException('Credenciais inválidas');
+		const validatePassword = await argon2.verify(user.password, dto.password);
 
-    const { accessToken, refreshToken } = await this.generateTokens(user.id, user.role);
+		if (!validatePassword) throw new UnauthorizedException('Credenciais inválidas');
 
-    return { accessToken, refreshToken };
-  }
+		const { accessToken, refreshToken } = await this.generateTokens(user.id, user.role);
 
-  async refreshToken(refreshToken: string) {
-    try {
-      const tokenPayload = await this.jwtService.verifyAsync<{
-        sub: string;
-        jti: string;
-      }>(refreshToken, {
-        ignoreExpiration: false,
-        secret: process.env.JWT_SECRET,
-      });
+		return { accessToken, refreshToken };
+	}
 
-      const storedToken = await this.prisma.refreshToken.findUnique({
-        where: { jti: tokenPayload.jti },
-      });
+	async refreshToken(refreshToken: string) {
+		try {
+			const tokenPayload = await this.jwtService.verifyAsync<{
+				sub: string;
+				jti: string;
+			}>(refreshToken, {
+				ignoreExpiration: false,
+				secret: process.env.JWT_SECRET,
+			});
 
-      if (!storedToken)
-        throw new UnauthorizedException('Token de autenticação inválido');
+			const storedToken = await this.prisma.refreshToken.findUnique({
+				where: { jti: tokenPayload.jti },
+			});
 
-      const isTokenValid = await argon2.verify(storedToken.token, refreshToken);
+			if (!storedToken) throw new UnauthorizedException('Token de autenticação inválido');
 
-      if (!isTokenValid)
-        throw new UnauthorizedException('Token de autenticação inválido');
+			const isTokenValid = await argon2.verify(storedToken.token, refreshToken);
 
-      const user = await this.prisma.user.findUnique({
-        where: {
-          id: tokenPayload.sub,
-        },
-      });
+			if (!isTokenValid) throw new UnauthorizedException('Token de autenticação inválido');
 
-      if (!user) throw new UnauthorizedException('Usuário não encontrado');
+			const user = await this.prisma.user.findUnique({
+				where: { id: tokenPayload.sub }
+			});
 
-      const { accessToken, refreshToken: newRefreshToken } =
-        await this.generateTokens(user.id, user.role);
+			if (!user) throw new UnauthorizedException('Usuário não encontrado');
 
-      return {
-        access_token: accessToken,
-        refresh_token: newRefreshToken,
-      };
-    } catch (error) {
-      if (error instanceof HttpException) throw error;
-      throw new UnauthorizedException('Token de autenticação inválido');
-    }
-  }
+			const { accessToken, refreshToken: newRefreshToken } = await this.generateTokens(user.id, user.role);
 
-  async logout(userId: string) {
-    await this.prisma.refreshToken.deleteMany({
-      where: { userId: userId },
-    });
-  }
+			await this.prisma.refreshToken.delete({
+				where: { jti: tokenPayload.jti },
+			});
 
-  async forgotPassword(email: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: email },
-    });
+			return {
+				access_token: accessToken,
+				refresh_token: newRefreshToken,
+			};
+		} catch (error) {
+			if (error instanceof HttpException) throw error;
+			throw new UnauthorizedException('Token de autenticação inválido');
+		}
+	}
 
-    if (!user)
-      return {
-        message: 'Se o email existir, enviaremos um link de recuperação',
-      };
+	async logout(userId: string) {
+		await this.prisma.refreshToken.deleteMany({
+			where: { userId: userId },
+		});
+	}
 
-    const resetPasswordToken = nanoid(21);
+	async forgotPassword(email: string) {
+		const user = await this.prisma.user.findUnique({
+			where: { email: email },
+		});
 
-    const hashedToken = this.hashToken(resetPasswordToken);
+		if (!user)
+			return {
+				message: 'Se o email existir, enviaremos um link de recuperação',
+			};
 
-    await this.prisma.passwordReset.create({
-      data: {
-        userId: user.id,
-        token: hashedToken,
-        expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-      },
-    });
+		const resetPasswordToken = nanoid(21);
 
-    await this.mailer.sendResetPasswordEmail(
-      resetPasswordToken,
-      user.email,
-      user.name,
-    );
+		const hashedToken = this.hashToken(resetPasswordToken);
 
-    return { message: 'Se o email existir, enviaremos um link de recuperação' };
-  }
+		await this.prisma.passwordReset.create({
+			data: {
+				userId: user.id,
+				token: hashedToken,
+				expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+			},
+		});
 
-  async changeForgottenPassword(token: string, newPassword: string) {
-    const hashedToken = this.hashToken(token);
+		await this.mailer.sendResetPasswordEmail(
+			resetPasswordToken,
+			user.email,
+			user.name,
+		);
 
-    const passwordResetRequisition = await this.prisma.passwordReset.findUnique(
-      {
-        where: {
-          token: hashedToken,
-        },
-      },
-    );
+		return { message: 'Se o email existir, enviaremos um link de recuperação' };
+	}
 
-    if (!passwordResetRequisition)
-      throw new BadRequestException('Credenciais inválidas');
+	async changeForgottenPassword(token: string, newPassword: string) {
+		const hashedToken = this.hashToken(token);
 
-    if (passwordResetRequisition.expiresAt < new Date()) {
-      await this.prisma.passwordReset.delete({
-        where: { id: passwordResetRequisition.id },
-      });
-      throw new BadRequestException(
-        'Token expirado, faça uma nova solicitação',
-      );
-    }
+		const passwordResetRequisition = await this.prisma.passwordReset.findUnique(
+			{
+				where: {
+					token: hashedToken,
+				},
+			},
+		);
 
-    const hashedPassword = await argon2.hash(newPassword);
+		if (!passwordResetRequisition)
+			throw new BadRequestException('Credenciais inválidas');
 
-    return await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({
-        where: { id: passwordResetRequisition.userId },
-        data: { password: hashedPassword },
-      });
+		if (passwordResetRequisition.expiresAt < new Date()) {
+			await this.prisma.passwordReset.delete({
+				where: { id: passwordResetRequisition.id },
+			});
+			throw new BadRequestException(
+				'Token expirado, faça uma nova solicitação',
+			);
+		}
 
-      await tx.passwordReset.delete({
-        where: { token: hashedToken },
-      });
+		const hashedPassword = await argon2.hash(newPassword);
 
-      return { message: 'Senha alterada com sucesso' };
-    });
-  }
+		return await this.prisma.$transaction(async (tx) => {
+			await tx.user.update({
+				where: { id: passwordResetRequisition.userId },
+				data: { password: hashedPassword },
+			});
 
-  async changePassword(userId: string, newPassword: string) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
+			await tx.passwordReset.delete({
+				where: { token: hashedToken },
+			});
 
-    if (!user) throw new NotFoundException('Usuário não encontrado');
+			return { message: 'Senha alterada com sucesso' };
+		});
+	}
 
-    const hashedPassword = await argon2.hash(newPassword);
+	async changePassword(userId: string, newPassword: string) {
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+		});
 
-    await this.prisma.user.update({
-      where: { id: user.id },
-      data: { password: hashedPassword },
-    });
+		if (!user) throw new NotFoundException('Usuário não encontrado');
 
-    return { message: 'Senha alterada com sucesso' };
-  }
+		const hashedPassword = await argon2.hash(newPassword);
+
+		await this.prisma.user.update({
+			where: { id: user.id },
+			data: { password: hashedPassword },
+		});
+
+		return { message: 'Senha alterada com sucesso' };
+	}
+
+	async deleteAccount(userId: string, password: string) {
+		const user = await this.prisma.user.findUnique({
+			where: { id: userId },
+		});
+
+		if (!user) throw new NotFoundException('Usuário não encontrado');
+
+		const validatePassword = await argon2.verify(user.password, password);
+
+		if (!validatePassword) throw new UnauthorizedException('Credenciais inválidas');
+
+		await this.prisma.user.delete({
+			where: {id: user.id}
+		})
+
+		return {message: "Conta deletada com sucesso"}
+	}
 }
