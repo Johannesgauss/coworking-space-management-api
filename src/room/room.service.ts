@@ -34,4 +34,24 @@ export class RoomService {
       where: { id },
     });
   }
+
+  async findAvailableRooms(date: Date, startTime: Date, endTime: Date) {
+    return await this.prisma.room.findMany({
+      where: {
+        NOT: {
+          reservations: {
+            some: {
+              status: 'ACTIVE',
+              OR: [
+                {
+                  startTime: { lt: endTime },
+                  endTime: { gt: startTime },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+  }
 }

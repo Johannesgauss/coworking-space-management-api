@@ -6,6 +6,7 @@ import {
   Put,
   Param,
   Delete,
+  Query,
 } from '@nestjs/common';
 import { RoomService } from './room.service';
 import { createRoomSchema, type CreateRoomDto } from './dto/create-room.dto';
@@ -23,6 +24,19 @@ export class RoomController {
   @Get()
   findAll() {
     return this.roomService.findAll();
+  }
+
+  @Get('available')
+  findAvailable(
+    @Query('date') date: string,
+    @Query('startTime') startTime: string,
+    @Query('endTime') endTime: string,
+  ) {
+    return this.roomService.findAvailableRooms(
+      new Date(date),
+      new Date(startTime),
+      new Date(endTime),
+    );
   }
 
   @Get(':id')
