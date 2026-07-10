@@ -1,9 +1,9 @@
-import { Controller, Get, HttpCode, HttpStatus, Patch, Put } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Put } from '@nestjs/common';
 import { UserService } from './user.service';
 import { User } from 'src/common/decorators/user.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
 
-@Controller('user')
+@Controller('users')
 export class UserController {
     constructor(private readonly userService: UserService) { }
 
@@ -15,7 +15,7 @@ export class UserController {
 
     @Put('me')
     @HttpCode(HttpStatus.OK)
-    updatePersonalUserData(@User('id') userId: string, dto: UpdateUserDto) {
+    updatePersonalUserData(@User('id') userId: string, @Body() dto: UpdateUserDto) {
         return this.userService.updateUserData(userId, dto)
     }
 }

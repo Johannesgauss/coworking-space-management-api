@@ -98,6 +98,17 @@ export class ReservationService {
     return await this.prisma.reservation.findMany();
   }
 
+  async findUserReservations(userId: string) {
+    return await this.prisma.reservation.findMany({
+      where: {
+        userId,
+        status: 'ACTIVE',
+        endTime: { gte: new Date() },
+      },
+      orderBy: { startTime: 'asc' },
+    });
+  }
+
   async remove(id: string) {
     return await this.prisma.reservation.delete({
       where: { id }

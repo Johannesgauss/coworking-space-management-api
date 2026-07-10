@@ -44,7 +44,7 @@ export class AuthController {
     }
 
     @Public()
-    @Post('forgot-password-reset')
+    @Post('reset-password')
     @HttpCode(HttpStatus.OK)
     resetForgottenPassword(@Query('token') token: string, @Body('password') password: string){
         return this.authService.changeForgottenPassword(token, password)
