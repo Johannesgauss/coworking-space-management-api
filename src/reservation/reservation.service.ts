@@ -60,7 +60,7 @@ export class ReservationService {
     return reservation;
   }
 
-  async remove(id: string, userId: string) {
+  async cancel(id: string, userId: string) {
     const reservation = await this.prisma.reservation.findUnique({
       where: { id },
     });
