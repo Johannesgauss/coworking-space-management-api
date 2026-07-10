@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { AuthService } from './auth.service';
 import { Public } from 'src/common/decorators/public.decorator';
@@ -39,14 +39,14 @@ export class AuthController {
     @Public()
     @Post('forgot-password')
     @HttpCode(HttpStatus.OK)
-    requestForgotPassword(@Body('email') email: string){
+    requestForgotPassword(@Body('email') email: string) {
         return this.authService.forgotPassword(email);
     }
 
     @Public()
     @Post('reset-password')
     @HttpCode(HttpStatus.OK)
-    resetForgottenPassword(@Query('token') token: string, @Body('password') password: string){
+    resetForgottenPassword(@Query('token') token: string, @Body('password') password: string) {
         return this.authService.changeForgottenPassword(token, password)
     }
 
@@ -55,5 +55,12 @@ export class AuthController {
     changePassword(@User('id') userId: string, @Body('password') password: string) {
         return this.authService.changePassword(userId, password)
     }
+
+    @Delete('me')
+    @HttpCode(HttpStatus.OK)
+    deleteAccount(@User('id') userId: string, @Body('password') password: string) {
+        return this.authService.deleteAccount(userId, password);
+    }
+
 
 }
