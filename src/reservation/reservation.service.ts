@@ -94,6 +94,16 @@ export class ReservationService {
     });
   }
 
+  async findAll() {
+    return await this.prisma.reservation.findMany();
+  }
+
+  async remove(id: string) {
+    return await this.prisma.reservation.delete({
+      where: { id }
+    });
+  }
+
   async history(userId: string) {
     const requestingUser = await this.prisma.user.findUnique({
       where: { id: userId },
