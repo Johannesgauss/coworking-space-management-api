@@ -62,5 +62,12 @@ export class AuthController {
         return this.authService.deleteAccount(userId, password);
     }
 
+    @Public()
+    @Post('regenerate')
+    @HttpCode(HttpStatus.OK)
+    regenerateToken(@Body('refreshToken') refreshToken: string) {
+        return this.authService.refreshToken(refreshToken);
+    }
+
 
 }
