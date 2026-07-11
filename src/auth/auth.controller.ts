@@ -1,10 +1,22 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Query, Req, Res, UnauthorizedException } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { CreateAccountDto } from './dto/create-account.dto';
 import { AuthService } from './auth.service';
 import { Public } from 'src/common/decorators/public.decorator';
 import { LoginDto } from './dto/login.dto';
 import { User } from 'src/common/decorators/user.decorator';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+
+const REFRESH_TOKEN_COOKIE = 'refresh_token';
+
+const refreshCookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict' as const,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    path: '/auth',
+};
+
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -28,15 +40,19 @@ export class AuthController {
     @Public()
     @Post('login')
     @HttpCode(HttpStatus.OK)
-    login(@Body() dto: LoginDto) {
-        return this.authService.login(dto);
+    async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+        const { accessToken, refreshToken } = await this.authService.login(dto);
+        res.cookie(REFRESH_TOKEN_COOKIE, refreshToken, refreshCookieOptions);
+        return { access_token: accessToken };
     }
 
     @Post('logout')
     @HttpCode(HttpStatus.OK)
     @ApiBearerAuth()
-    logout(@User('id') userId: string) {
-        return this.authService.logout(userId)
+    async logout(@User('id') userId: string, @Res({ passthrough: true }) res: Response) {
+        await this.authService.logout(userId);
+        res.clearCookie(REFRESH_TOKEN_COOKIE, { path: '/auth' });
+        return { message: 'Logout realizado com sucesso' };
     }
 
     @Public()
@@ -70,8 +86,13 @@ export class AuthController {
     @Public()
     @Post('regenerate')
     @HttpCode(HttpStatus.OK)
-    regenerateToken(@Body('refreshToken') refreshToken: string) {
-        return this.authService.refreshToken(refreshToken);
+    async regenerateToken(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+        const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE];
+        if (!refreshToken) throw new UnauthorizedException('Refresh token não encontrado');
+
+        const { access_token, refresh_token } = await this.authService.refreshToken(refreshToken);
+        res.cookie(REFRESH_TOKEN_COOKIE, refresh_token, refreshCookieOptions);
+        return { access_token };
     }
 
 
