@@ -1,9 +1,15 @@
-import { z } from 'zod';
+import { IsString, IsNotEmpty, IsInt, IsPositive } from 'class-validator';
 
-export const createRoomSchema = z.object({
-  name: z.string(),
-  capacity: z.number().int().positive(),
-  description: z.string(),
-});
+export class CreateRoomDto {
+  @IsString({ message: 'O nome da sala deve ser uma string.' })
+  @IsNotEmpty({ message: 'O nome da sala não pode estar vazio.' })
+  name!: string;
 
-export type CreateRoomDto = z.infer<typeof createRoomSchema>;
+  @IsInt({ message: 'A capacidade deve ser um número inteiro.' })
+  @IsPositive({ message: 'A capacidade deve ser um número positivo.' })
+  capacity!: number;
+
+  @IsString({ message: 'A descrição deve ser uma string.' })
+  @IsNotEmpty({ message: 'A descrição não pode estar vazia.' })
+  description!: string;
+}
