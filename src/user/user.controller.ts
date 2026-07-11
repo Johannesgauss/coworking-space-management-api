@@ -2,7 +2,10 @@ import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Put } from '@nestjs
 import { UserService } from './user.service';
 import { User } from 'src/common/decorators/user.decorator';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Users')
+@ApiBearerAuth()
 @Controller('users')
 export class UserController {
     constructor(private readonly userService: UserService) { }

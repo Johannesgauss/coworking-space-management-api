@@ -1,7 +1,10 @@
 import { Controller, Get, Param, Delete } from '@nestjs/common';
 import { ReservationService } from './reservation.service';
 import { Roles } from '../common/decorators/roles.decorator';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Admin Reservations')
+@ApiBearerAuth()
 @Roles('ADMIN')
 @Controller('admin/reservations')
 export class AdminReservationController {

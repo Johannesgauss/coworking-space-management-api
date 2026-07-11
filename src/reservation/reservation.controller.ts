@@ -16,7 +16,10 @@ import {
 import { User } from 'src/common/decorators/user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { ZodError } from 'zod';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Reservations')
+@ApiBearerAuth()
 @Controller('reservations')
 @UseGuards(JwtAuthGuard)
 export class ReservationController {

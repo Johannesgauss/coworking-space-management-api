@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { Public } from 'src/common/decorators/public.decorator';
 import { LoginDto } from './dto/login.dto';
 import { User } from 'src/common/decorators/user.decorator';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 const REFRESH_TOKEN_COOKIE = 'refresh_token';
 
@@ -16,6 +17,8 @@ const refreshCookieOptions = {
     path: '/auth',
 };
 
+
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
@@ -45,6 +48,7 @@ export class AuthController {
 
     @Post('logout')
     @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
     async logout(@User('id') userId: string, @Res({ passthrough: true }) res: Response) {
         await this.authService.logout(userId);
         res.clearCookie(REFRESH_TOKEN_COOKIE, { path: '/auth' });
@@ -67,12 +71,14 @@ export class AuthController {
 
     @Post('change-password')
     @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
     changePassword(@User('id') userId: string, @Body('password') password: string) {
         return this.authService.changePassword(userId, password)
     }
 
     @Delete('me')
     @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
     deleteAccount(@User('id') userId: string, @Body('password') password: string) {
         return this.authService.deleteAccount(userId, password);
     }
