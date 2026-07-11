@@ -1,6 +1,10 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
-import type { CreateReservationDto } from './dto/create-reservation.dto';
+import { CreateReservationDto } from './dto/create-reservation.dto';
 import { ReservationCancelNotAllowedException } from './exceptions/ReservationCancelNotAllowedException';
 import { ReservationCancelNotFoundException } from './exceptions/ReservationNotFoundException';
 import { ReservationForbiddenException } from './exceptions/ReservationForbiddenException';
@@ -10,7 +14,17 @@ export class ReservationService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createReservationDto: CreateReservationDto, userId: string) {
-    const { roomId, startTime, endTime } = createReservationDto;
+    const { roomId, startTime, endTime, date } = createReservationDto;
+
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const reservationDate = new Date(date);
+
+    if (end <= start) {
+      throw new BadRequestException(
+        'O horário de término deve ser maior que o horário de início.',
+      );
+    }
 
     const conflictingReservation = await this.prisma.reservation.findFirst({
       where: {
@@ -18,8 +32,8 @@ export class ReservationService {
         status: 'ACTIVE',
         OR: [
           {
-            startTime: { lt: endTime },
-            endTime: { gt: startTime },
+            startTime: { lt: end },
+            endTime: { gt: start },
           },
         ],
       },
@@ -33,7 +47,10 @@ export class ReservationService {
 
     return await this.prisma.reservation.create({
       data: {
-        ...createReservationDto,
+        roomId,
+        date: reservationDate,
+        startTime: start,
+        endTime: end,
         status: 'ACTIVE',
         userId,
       },
@@ -111,7 +128,7 @@ export class ReservationService {
 
   async remove(id: string) {
     return await this.prisma.reservation.delete({
-      where: { id }
+      where: { id },
     });
   }
 
