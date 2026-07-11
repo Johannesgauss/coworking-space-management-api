@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { RoomService } from './room.service';
-import { createRoomSchema, type CreateRoomDto } from './dto/create-room.dto';
+import { CreateRoomDto } from './dto/create-room.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../common/guards/role.guards';
 import { Roles } from '../common/decorators/roles.decorator';
@@ -25,8 +25,7 @@ export class RoomController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   create(@Body() createRoomDto: CreateRoomDto) {
-    const validatedData = createRoomSchema.parse(createRoomDto);
-    return this.roomService.create(validatedData);
+    return this.roomService.create(createRoomDto);
   }
 
   @Get()
@@ -57,9 +56,11 @@ export class RoomController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  update(@Param('id') id: string, @Body() updateRoomDto: CreateRoomDto) {
-    const validatedData = createRoomSchema.parse(updateRoomDto);
-    return this.roomService.update(id, validatedData);
+  async update(
+    @Param('id') id: string,
+    @Body() updateRoomDto: CreateRoomDto,
+  ): Promise<any> {
+    return this.roomService.update(id, updateRoomDto);
   }
 
   @Patch(':id/status')
