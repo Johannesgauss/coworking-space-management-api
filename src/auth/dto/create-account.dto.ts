@@ -1,5 +1,4 @@
-import {IsEmail, IsEnum, IsNotEmpty, IsString } from "class-validator"
-import { Roles } from "../types/roles.enum";
+import {IsEmail, IsNotEmpty, IsString } from "class-validator"
 
 export class CreateAccountDto {
     @IsString()
@@ -17,9 +16,4 @@ export class CreateAccountDto {
     @IsString()
     @IsNotEmpty()
     password!: string;
-
-    @IsEnum(Roles, {message: "Precisa escolher um papel válido"})
-    @IsNotEmpty()
-    role!: Roles;
-
 }

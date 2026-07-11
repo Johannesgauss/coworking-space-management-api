@@ -96,4 +96,29 @@ describe('UserService', () => {
       expect(prisma.user.update).not.toHaveBeenCalled();
     });
   });
+
+  describe('promoteToAdmin', () => {
+    it('should promote user to admin and return success message if user is found', async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: 'user-1' });
+      prisma.user.update.mockResolvedValue({ id: 'user-1' });
+
+      const result = await service.promoteToAdmin('user-1');
+
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { id: 'user-1' } });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { role: 'ADMIN' },
+      });
+      expect(result).toEqual({ message: 'Usuário promovido a administrador com sucesso' });
+    });
+
+    it('should throw NotFoundException if user is not found', async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.promoteToAdmin('nonexistent'),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
 });

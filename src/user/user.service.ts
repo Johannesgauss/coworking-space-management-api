@@ -41,4 +41,21 @@ export class UserService {
 
         return {message: "Dados atualizados com sucesso"}
     }
+
+    async promoteToAdmin(userId: string) {
+        const user = await this.prisma.user.findUnique({
+            where: {id: userId}
+        })
+
+        if (!user) throw new NotFoundException('Usuário não encontrado');
+
+        await this.prisma.user.update({
+            where: {id: userId},
+            data: {
+                role: 'ADMIN'
+            }
+        })
+
+        return {message: "Usuário promovido a administrador com sucesso"}
+    }
 }

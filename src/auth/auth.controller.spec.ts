@@ -44,7 +44,6 @@ describe('AuthController', () => {
       lastName: 'Doe',
       email: 'john@example.com',
       password: 'password123',
-      role: 'USER',
     };
     const expectedResult = { message: 'Conta registrada com Sucesso' };
     authService.registerAccount.mockResolvedValue(expectedResult);
