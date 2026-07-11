@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import type { Response } from 'express';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { CreateAccountDto } from './dto/create-account.dto';
@@ -65,27 +66,34 @@ describe('AuthController', () => {
     expect(result).toEqual(expectedResult);
   });
 
-  it('should call login on login', async () => {
+  it('should call login, set refresh cookie and return only access_token', async () => {
     const dto: LoginDto = {
       email: 'john@example.com',
       password: 'password123',
     };
-    const expectedResult = { accessToken: 'access', refreshToken: 'refresh' };
-    authService.login.mockResolvedValue(expectedResult);
+    authService.login.mockResolvedValue({ accessToken: 'access', refreshToken: 'refresh' });
+    const res = { cookie: jest.fn(), clearCookie: jest.fn() } as unknown as Response;
 
-    const result = await controller.login(dto);
+    const result = await controller.login(dto, res);
 
     expect(authService.login).toHaveBeenCalledWith(dto);
-    expect(result).toEqual(expectedResult);
+    expect(res.cookie).toHaveBeenCalledWith(
+      'refresh_token',
+      'refresh',
+      expect.objectContaining({ httpOnly: true, secure: true, sameSite: 'strict', path: '/auth' }),
+    );
+    expect(result).toEqual({ access_token: 'access' });
   });
 
-  it('should call logout on logout', async () => {
+  it('should call logout and clear the refresh cookie', async () => {
     const userId = 'user-id';
     authService.logout.mockResolvedValue(undefined);
+    const res = { cookie: jest.fn(), clearCookie: jest.fn() } as unknown as Response;
 
-    await controller.logout(userId);
+    await controller.logout(userId, res);
 
     expect(authService.logout).toHaveBeenCalledWith(userId);
+    expect(res.clearCookie).toHaveBeenCalledWith('refresh_token', { path: '/auth' });
   });
 
   it('should call forgotPassword on requestForgotPassword', async () => {
