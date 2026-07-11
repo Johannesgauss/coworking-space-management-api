@@ -31,7 +31,7 @@ export class NotificationService {
 
         await this.mailer.sendMail({
             to: email,
-            subject: 'Confirme seu registro',
+            subject: 'Mude sua senha',
             html: `
             <p>Olá, ${name}<p>
             <p>Para recuperar a senha da sua conta, por favor, clique no link abaixo:<p>
