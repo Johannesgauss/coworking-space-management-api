@@ -80,7 +80,7 @@ describe('ReservationController', () => {
         roomId: 'invalid-uuid',
         date: 'invalid-date',
         startTime: '2026-07-10T10:00:00Z',
-        endTime: '2026-07-10T09:00:00Z', // endTime < startTime
+        endTime: '2026-07-10T09:00:00Z',
       };
 
       await expect(controller.create(invalidDto as any, 'user-1')).rejects.toThrow(BadRequestException);

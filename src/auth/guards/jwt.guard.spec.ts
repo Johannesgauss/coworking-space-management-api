@@ -10,7 +10,6 @@ describe('JwtAuthGuard', () => {
   let superCanActivateSpy: jest.SpyInstance;
 
   beforeEach(async () => {
-    // Spy on the super class canActivate method
     superCanActivateSpy = jest
       .spyOn(AuthGuard('jwt').prototype, 'canActivate')
       .mockImplementation(() => true);
