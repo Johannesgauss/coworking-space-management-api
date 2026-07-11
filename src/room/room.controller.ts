@@ -16,7 +16,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt.guard';
 import { RolesGuard } from '../common/guards/role.guards';
 import { Roles } from '../common/decorators/roles.decorator';
 import { Public } from '../common/decorators/public.decorator';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Rooms')
 @Controller('rooms')
 export class RoomController {
   constructor(private readonly roomService: RoomService) {}
@@ -24,6 +26,7 @@ export class RoomController {
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @ApiBearerAuth()
   create(@Body() createRoomDto: CreateRoomDto) {
     const validatedData = createRoomSchema.parse(createRoomDto);
     return this.roomService.create(validatedData);
@@ -57,6 +60,7 @@ export class RoomController {
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @ApiBearerAuth()
   update(@Param('id') id: string, @Body() updateRoomDto: CreateRoomDto) {
     const validatedData = createRoomSchema.parse(updateRoomDto);
     return this.roomService.update(id, validatedData);
@@ -65,6 +69,7 @@ export class RoomController {
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @ApiBearerAuth()
   changeStatus(@Param('id') id: string, @Body() body: { isActive: boolean }) {
     return this.roomService.changeStatus(id, body.isActive);
   }
@@ -72,6 +77,7 @@ export class RoomController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @ApiBearerAuth()
   remove(@Param('id') id: string) {
     return this.roomService.remove(id);
   }

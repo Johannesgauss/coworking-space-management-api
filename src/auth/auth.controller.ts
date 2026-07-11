@@ -4,7 +4,9 @@ import { AuthService } from './auth.service';
 import { Public } from 'src/common/decorators/public.decorator';
 import { LoginDto } from './dto/login.dto';
 import { User } from 'src/common/decorators/user.decorator';
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) { }
@@ -32,6 +34,7 @@ export class AuthController {
 
     @Post('logout')
     @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
     logout(@User('id') userId: string) {
         return this.authService.logout(userId)
     }
@@ -52,15 +55,15 @@ export class AuthController {
 
     @Post('change-password')
     @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
     changePassword(@User('id') userId: string, @Body('password') password: string) {
         return this.authService.changePassword(userId, password)
     }
 
     @Delete('me')
     @HttpCode(HttpStatus.OK)
+    @ApiBearerAuth()
     deleteAccount(@User('id') userId: string, @Body('password') password: string) {
         return this.authService.deleteAccount(userId, password);
     }
-
-
 }
